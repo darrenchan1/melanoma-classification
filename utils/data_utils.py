@@ -320,3 +320,123 @@ def load_train_val_test_df(image_directory, metadata_csv, val_size=0.1, test_siz
 
     return train_df, val_df, test_df
 
+
+def split_image_paths(image_dir, valid_exts={'.jpg', '.jpeg', '.png', '.bmp', '.tif', '.tiff'}):
+    """
+    Splits images into train/val/test lists of (path, class_label),
+    including only valid image files.
+
+    Args:
+        image_dir (str): root directory with class subfolders
+        valid_exts (set): allowed image file extensions (lowercase)
+
+    Returns:
+        dict: {'train': [...], 'val': [...], 'test': [...]}
+    """
+    from sklearn.model_selection import train_test_split
+
+    splits = {'train': [], 'val': [], 'test': []}
+    for cls in os.listdir(image_dir):
+        class_path = os.path.join(image_dir, cls)
+        if not os.path.isdir(class_path):
+            continue
+
+        # Filter only valid image files
+        files = [
+            f for f in os.listdir(class_path)
+            if os.path.isfile(os.path.join(class_path, f)) and
+               os.path.splitext(f)[1].lower() in valid_exts
+        ]
+
+        # Make full paths with class label
+        data = [(os.path.join(cls, f), cls) for f in files]
+
+        # Split: 70% train, 15% val, 15% test
+        train_val, test = train_test_split(data, test_size=0.15, random_state=42)
+        train, val = train_test_split(train_val, test_size=0.1765, random_state=42)  # ~0.15/0.85
+
+        splits['train'].extend(train)
+        splits['val'].extend(val)
+        splits['test'].extend(test)
+
+    return splits
+
+
+def load_isic_data(image_dir):
+    splits = split_image_paths(image_dir)
+    all_classes = set()
+    for split in splits.values():
+        all_classes.update([cls for _, cls in split])
+    class_to_idx = {cls: idx for idx, cls in enumerate(sorted(all_classes))}
+
+    dfs = {}
+    for split_name, data in splits.items():
+        paths = [p for p, c in data]
+        labels = [class_to_idx[c] for _, c in data]
+        df = pd.DataFrame({
+            "clinical_path": paths,
+            "label": labels
+        })
+        dfs[split_name] = df.reset_index(drop=True)
+
+    return dfs, class_to_idx
+
+
+def load_isic_data_demo(image_dir):
+    """
+    Demo version of load_isic_data that puts ALL images into the test set.
+    No train/val splitting - perfect for demo purposes.
+    
+    Args:
+        image_dir (str): root directory with class subfolders (e.g., 'malignant', 'benign')
+    
+    Returns:
+        dfs (dict): Dictionary with 'train', 'val', 'test' keys
+                   - 'train' and 'val' are empty DataFrames
+                   - 'test' contains ALL images from the directory
+        class_to_idx (dict): Mapping from class names to integer labels
+    """
+    import os
+    
+    # Get all classes (subdirectories)
+    all_classes = []
+    all_images = []
+    all_labels = []
+    
+    for class_name in os.listdir(image_dir):
+        class_path = os.path.join(image_dir, class_name)
+        if not os.path.isdir(class_path):
+            continue
+            
+        all_classes.append(class_name)
+        
+        # Get all image files in this class directory
+        for filename in os.listdir(class_path):
+            if filename.lower().endswith(('.jpg', '.jpeg', '.png', '.bmp', '.tif', '.tiff')):
+                all_images.append(os.path.join(class_name, filename))
+                all_labels.append(class_name)
+    
+    # Create class_to_idx mapping (same as original function)
+    class_to_idx = {cls: idx for idx, cls in enumerate(sorted(all_classes))}
+    
+    # Convert string labels to integer labels
+    int_labels = [class_to_idx[label] for label in all_labels]
+    
+    # Create test DataFrame with ALL images
+    test_df = pd.DataFrame({
+        "clinical_path": all_images,
+        "label": int_labels
+    })
+    
+    # Create empty train and val DataFrames
+    train_df = pd.DataFrame({"clinical_path": [], "label": []})
+    val_df = pd.DataFrame({"clinical_path": [], "label": []})
+    
+    dfs = {
+        'train': train_df,
+        'val': val_df,
+        'test': test_df
+    }
+    
+    return dfs, class_to_idx
+
