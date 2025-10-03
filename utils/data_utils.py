@@ -382,6 +382,73 @@ def load_isic_data(image_dir):
     return dfs, class_to_idx
 
 
+def load_midas_data_demo(cropped_dir, metadata_csv):
+    """
+    Creates a small test dataset with exactly 50 images: 25 malignant (label 1) and 25 benign (label 0).
+    
+    Args:
+        cropped_dirs (list): List of directories containing cropped images.
+        metadata_csv (str): Path to metadata CSV.
+        
+    Returns:
+        test_df: DataFrame with exactly 50 images (25 malignant, 25 benign)
+        image_paths: List of image paths
+    """
+    excluded_base_names = [
+        "s-prd-462542531.jpg",
+        "s-prd-567681349.jpg",
+        "s-prd-595361939.jpg",
+        "s-prd-719354460.jpg",
+        "s-prd-752575241.jpg",
+        "s-prd-470472240.jpg",
+        "s-prd-601218250.jpg",
+        "s-prd-632469223.jpg",
+        "s-prd-653536778.jpg",
+        "s-prd-767507626.jpg"
+    ]
+    df = pd.read_csv(metadata_csv)
+
+    # Filter out control images
+    df = df[df['midas_iscontrol'].str.lower() == 'no']
+
+    # Normalize fields
+    df['midas_distance'] = df['midas_distance'].str.lower()
+
+    # Define modality
+    df['modality'] = df['midas_distance'].apply(
+        lambda x: 'dermoscope' if x == 'dscope' else ('clinical' if isinstance(x, str) else None)
+    )
+
+    # Filter to only 6in clinical images
+    df = df[(df['modality'] == 'clinical') & (df['midas_distance'] == '6in')]
+
+    # Assign label based on midas_path
+    df['label'] = df['midas_path'].str.lower().str.contains("malig").astype(int)
+
+    # Prepare for matching
+    df['base_name'] = df['midas_file_name'].apply(lambda x: os.path.splitext(x)[0])
+    metadata_lookup = df.set_index('base_name')
+
+    metadata_lookup = metadata_lookup.drop(excluded_base_names, errors='ignore')
+    matched_rows = []
+    for f in os.listdir(cropped_dir):
+        if f.lower().endswith(('.jpg', '.jpeg', '.png')):
+            base = os.path.splitext(f)[0]
+            if base in metadata_lookup.index:
+                row = metadata_lookup.loc[base]
+                matched_rows.append({
+                    'midas_record_id': row['midas_record_id'],
+                    'clinical_path': os.path.join(cropped_dir, f),
+                    'label': row['label'],
+                    'clinical_midas_distance': row['midas_distance']
+                })
+
+    matched_df = pd.DataFrame(matched_rows)
+    test_df = matched_df.reset_index(drop=True)
+ 
+    return test_df
+
+
 def load_isic_data_demo(image_dir):
     """
     Demo version of load_isic_data that puts ALL images into the test set.
