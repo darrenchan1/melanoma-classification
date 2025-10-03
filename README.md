@@ -16,14 +16,14 @@ This approach aims to close the domain gap between high-quality dermoscopic imag
 The [ISIC Archive](https://www.isic-archive.com/) is a large dataset of dermoscopic and clinical images. We train a model specifically on clinical DSLR images (2,866 images).  
 
 Demo notebooks for the ISIC model:  
-- [isic_demo.ipynb](isic_demo.ipynb) – explores model predictions on sample images.  
+- [isic_demo.ipynb](isic_demo.ipynb) – explores model predictions on a small set of 50 randomly selected sample images.  
 - [isic_training.ipynb](isic_training.ipynb) – details the training regimen.
 
 ## MIDAS (Smartphone Camera) Data
 The [MRA-MIDAS dataset](https://stanfordaimi.azurewebsites.net/datasets/f4c2020f-801a-42dd-a477-a1a8357ef2a5) contains paired dermoscopic and smartphone images. We use only clinical smartphone images, manually cropping a subset of 300 images to reduce background noise and interference.  
 
 Demo notebooks for the MIDAS model:  
-- [midas_demo.ipynb](midas_demo.ipynb) – shows predictions on sample images.  
+- [midas_demo.ipynb](midas_demo.ipynb) – shows predictions on a small set of 50 randomly selected sample images.
 - [midas_training.ipynb](midas_training.ipynb) – shows the training regimen.
 
 
